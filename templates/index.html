@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brain Stroke Detection</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+* { box-sizing: border-box; margin:0; padding:0; font-family: 'Roboto', sans-serif; }
+
+/* Background */
+body{
+    background: url("{{ url_for('static', filename='websitebg.jpeg') }}") no-repeat center center fixed;
+    background-size: cover;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
+
+/* Glass container */
+.container{
+    backdrop-filter: blur(12px);
+    background: rgba(173,216,230,0.2); /* soft light blue tint */
+    padding: 40px 30px;
+    border-radius: 20px;
+    text-align:center;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-6px); }
+    100% { transform: translateY(0px); }
+}
+
+/* Header */
+h2{
+    font-weight:700;
+    margin-bottom:25px;
+}
+
+/* Custom file input */
+input[type=file]{
+    display: none;
+}
+.custom-file-label{
+    display: inline-block;
+    padding:12px 25px;
+    border-radius:12px;
+    cursor:pointer;
+    background: rgba(255,255,255,0.25);
+    color: #000;
+    font-weight: 500;
+    transition: background 0.3s;
+    margin-bottom: 10px;
+}
+.custom-file-label:hover{
+    background: rgba(255,255,255,0.35);
+}
+
+/* Button */
+button{
+    margin-top:20px;
+    padding:12px 25px;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    font-weight:700;
+    background: linear-gradient(135deg,#2575fc,#6a11cb);
+    color:white;
+    transition: all 0.3s ease;
+}
+button:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* Uploaded image */
+.uploaded-image {
+    margin-top:20px;
+    max-width:100%;
+    border-radius:10px;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+/* Prediction result */
+.result{
+    margin-top: 20px;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.normal{ color:#2ecc71; }
+.stroke{ color:#e74c3c; }
+
+/* Neon animated confidence bar */
+.confidence-bar {
+    margin-top: 10px;
+    width: 100%;
+    background: rgba(255,255,255,0.2);
+    border-radius: 12px;
+    overflow: hidden;
+    height: 18px;
+}
+
+.confidence-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(270deg,#00fffc,#2575fc,#00fffc);
+    background-size: 600% 600%;
+    border-radius: 12px;
+    animation: gradientMove 3s ease infinite;
+    transition: width 1s ease-in-out;
+}
+
+@keyframes gradientMove {
+    0% {background-position:0% 50%;}
+    50% {background-position:100% 50%;}
+    100% {background-position:0% 50%;}
+}
+
+/* Spinner */
+#spinner {
+    position: fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background: rgba(0,0,0,0.5);
+    display:none;
+    justify-content:center;
+    align-items:center;
+    flex-direction: column;
+    z-index: 999;
+}
+
+.loader{
+    border:8px solid #f3f3f3;
+    border-top:8px solid #2575fc;
+    border-radius:50%;
+    width:50px; height:50px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin{
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#spinner-text{
+    color:white;
+    margin-bottom:10px;
+    font-weight:bold;
+}
+</style>
+
+<script>
+function previewImage(event){
+    var reader = new FileReader();
+    reader.onload = function(){
+        document.getElementById('preview').src = reader.result;
+    }
+    reader.readAsDataURL(event.target.files[0]);
+}
+
+// Display file name on label
+function updateLabel(event){
+    var label = document.getElementById('file-label');
+    label.textContent = event.target.files[0].name;
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+    var form = document.querySelector('form');
+    form.addEventListener('submit',function(){
+        document.getElementById('spinner').style.display='flex';
+    });
+
+    {% if confidence %}
+        var fill = document.querySelector('.confidence-fill');
+        if(fill) fill.style.width="{{ confidence }}%";
+    {% endif %}
+});
+</script>
+
+</head>
+<body>
+
+<div id="spinner">
+    <div id="spinner-text">AI Analyzing...</div>
+    <div class="loader"></div>
+</div>
+
+<div class="container">
+<h2>Brain Stroke Detection</h2>
+
+<form method="POST" enctype="multipart/form-data">
+<label class="custom-file-label" id="file-label" for="fileInput">Choose Image</label>
+<input type="file" name="image" id="fileInput" accept=".jpg,.jpeg,.png" onchange="previewImage(event); updateLabel(event);" required>
+<img id="preview" style="margin-top:15px; max-width:100%; border-radius:10px;">
+<button type="submit">Detect Stroke</button>
+</form>
+
+{% if error %}
+<div id="error">{{ error }}</div>
+{% endif %}
+
+{% if image %}
+<h4 style="margin-top:20px;">Uploaded Brain Scan</h4>
+<img class="uploaded-image" src="{{ url_for('static', filename='uploads/' + image.split('/')[-1]) }}">
+{% endif %}
+
+{% if result %}
+<div class="result {% if 'Normal' in result %}normal{% else %}stroke{% endif %}">
+{{ result }}
+</div>
+<div class="confidence-bar">
+    <div class="confidence-fill" style="width: {{ confidence }}%;"></div>
+</div>
+<p style="margin-top:5px; color:white; font-weight:bold;">
+Confidence: {{ confidence }}%
+</p>
+{% endif %}
+
+</div>
+
+</body>
+</html>
